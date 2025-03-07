@@ -68,7 +68,7 @@ def process_ceres(setup: DyamondSetup) -> None:
     ds_syn_hovmoeller = ds_syn_subset.mean(dim="lat")
     ds_syn_hourly_mean = ds_syn_hovmoeller.groupby("time.hour").mean()
     ds_write(ds_syn_hovmoeller, "syn_hov_" + setup.start_end_str)
-    ds_write(ds_syn_hourly_mean, "syn_hov_hourlymean_" + setup.start_end_str)
+    ds_write(ds_syn_hourly_mean, "syn_hov_hourly_mean_" + setup.start_end_str)
     # GET CERES EBAS FOR SAME MONTH AND CLIMATOLOGY FOR THAT MONTHS
     ds_ebaf_months = ds_ebaf.sel(
         time=(ds_ebaf.time.dt.month == setup.ebaf_start_pd.month)

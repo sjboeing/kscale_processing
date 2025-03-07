@@ -28,6 +28,8 @@ class ModelObsComparison:
     label_units: str
     vmin: float
     vmax: float
+    vmin_hov: float
+    vmax_hov: float
     vmin_diff: float
     vmax_diff: float
 
@@ -39,6 +41,8 @@ olr = ModelObsComparison(
     label_units="W m^-2",
     vmin=220,
     vmax=340,
+    vmin_hov=220,
+    vmax_hov=340,
     vmin_diff=-80,
     vmax_diff=80,
 )
@@ -51,6 +55,8 @@ osr = ModelObsComparison(
     label_units="W m^-2",
     vmin=40,
     vmax=260,
+    vmin_hov=40,
+    vmax_hov=520,
     vmin_diff=-80,
     vmax_diff=80,
 )
@@ -172,12 +178,13 @@ def make_hov_plots(
     ds_hov_ral32: xr.Dataset,
     setup: DyamondSetup,
     comparison: ModelObsComparison,
+    ext: str = '',
 ) -> None:
     """PLOT HOVMOELLERS"""
     fig, axes = plt.subplots(1, 3, figsize=(12, 8), sharex=True, sharey=True)
     fig.suptitle(comparison.label_variable_name + " Hovmoeller")
 
-    plot_kwargs = {"vmin": comparison.vmin, "vmax": comparison.vmax, "cmap": "viridis"}
+    plot_kwargs = {"vmin": comparison.vmin_hov, "vmax": comparison.vmax_hov, "cmap": "viridis"}
 
     ds_hov_syn[comparison.obs_variable_name + "_1h"].plot.pcolormesh(
         ax=axes[0], **plot_kwargs
@@ -196,7 +203,7 @@ def make_hov_plots(
     axes[2].set_title("RAL3p2")
 
     fig.tight_layout()
-    plot_save(fig, comparison.obs_variable_name + "_hov_" + setup.start_end_str)
+    plot_save(fig, comparison.obs_variable_name + "_hov_" + ext + setup.start_end_str)
 
 
 if __name__ == "__main__":
@@ -206,6 +213,9 @@ if __name__ == "__main__":
         this_ds_hov_syn = ds_open("syn_hov_" + this_setup.start_end_str)
         this_ds_hov_gal9 = ds_open("GAL9_interp_hov_" + this_setup.start_end_str)
         this_ds_hov_ral32 = ds_open("RAL3p2_interp_hov_" + this_setup.start_end_str)
+        this_ds_hov_hourly_syn = ds_open("syn_hov_hourly_mean_" + this_setup.start_end_str)
+        this_ds_hov_hourly_gal9 = ds_open("GAL9_interp_hov_hourly_mean_" + this_setup.start_end_str)
+        this_ds_hov_hourly_ral32 = ds_open("RAL3p2_interp_hov_hourly_mean_" + this_setup.start_end_str)
         this_ds_ebaf_meanmonth = ds_open(
             "ebaf_meanmonth_" + this_setup.ebaf_start_pd.strftime("%m")
         )
@@ -235,4 +245,12 @@ if __name__ == "__main__":
             this_ds_hov_ral32,
             this_setup,
             this_comparison,
+        )
+        make_hov_plots(
+            this_ds_hov_hourly_syn,
+            this_ds_hov_hourly_gal9,
+            this_ds_hov_hourly_ral32,
+            this_setup,
+            this_comparison,
+            ext='hourly_mean_',
         )

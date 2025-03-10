@@ -1,0 +1,6 @@
+obs_dir: "/path/to/obs_data/"
+data_dir: "/path/to/DATA/"
+process_dir: "processed_data"
+plots_dir: "plots"
+ebaf_file: "CERES_EBAF-TOA_Ed4.2.1_Subset_200003-202411.nc"
+models:  ["GAL9", "RAL3p2"]

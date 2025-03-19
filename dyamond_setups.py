@@ -6,6 +6,20 @@ import yaml
 
 
 @dataclass
+class Basin:
+    """Store bain information"""
+
+    name: str
+    lat_bounds: tuple[float, float]
+    lon_bounds: tuple[float, float]
+    lam: str
+
+    @property
+    def um_lon_bounds(self) -> tuple[float, float]:
+        return tuple((ii + 180.0) % 360.0 - 180.0 for ii in self.lon_bounds)
+
+
+@dataclass
 class DyamondSetup:
     """We store the data in a dataclass object"""
 
@@ -15,7 +29,7 @@ class DyamondSetup:
     ebaf_start_date: str
     ebaf_end_date: str
     syn_file: str
-    lat_bounds: tuple
+    lat_bounds: tuple[float, float]
 
     # Define some shorthands, possibly this is overkill
     @property
@@ -56,7 +70,7 @@ dyamond_summer = DyamondSetup(
     ebaf_start_date="2016-08-01 00:15",
     ebaf_end_date="2016-08-31 23:45",
     syn_file="CERES_SYN1deg-1H_Terra-Aqua-MODIS_Ed4.1_Subset_20160801-20160930.nc",
-    lat_bounds=(5, 15),
+    lat_bounds=(5.0, 15.0),
 )
 
 dyamond_winter = DyamondSetup(
@@ -66,7 +80,21 @@ dyamond_winter = DyamondSetup(
     ebaf_start_date="2020-02-01 00:15",
     ebaf_end_date="2020-02-28 23:45",
     syn_file="CERES_SYN1deg-1H_Terra-Aqua-MODIS_Ed4.1_Subset_20200101-20200229.nc",
-    lat_bounds=(-5, 5),
+    lat_bounds=(-5.0, 5.0),
+)
+
+amazon = Basin(
+    name="Amazon",
+    lat_bounds=(-10.0, 0.0),
+    lon_bounds=(295.0, 302.0),
+    lam="lam_samerica_km4p4",
+)
+
+congo = Basin(
+    name="Congo",
+    lat_bounds=(-5.0, 5.0),
+    lon_bounds=(15.0, 25.0),
+    lam="lam_africa_km4p4",
 )
 
 
@@ -77,3 +105,4 @@ def yaml_load(file_name: str) -> dict:
 
 
 dyamond_setups = [dyamond_summer, dyamond_winter]
+basins = [amazon, congo]

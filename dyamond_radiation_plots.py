@@ -32,13 +32,15 @@ class ModelObsComparison:
     vmax_hov: float
     vmin_diff: float
     vmax_diff: float
+    cmap: str = "viridis"
+    cmap_diff: str = "bwr"
 
 
 olr = ModelObsComparison(
     obs_variable_name="toa_lw_all",
     model_variable_name="toa_outgoing_longwave_flux",
     label_variable_name="TOA OLWR",
-    label_units="W m^-2",
+    label_units="$W/m^2$",
     vmin=220,
     vmax=340,
     vmin_hov=220,
@@ -52,7 +54,7 @@ osr = ModelObsComparison(
     obs_variable_name="toa_sw_all",
     model_variable_name="toa_outgoing_shortwave_flux",
     label_variable_name="TOA OSWR",
-    label_units="W m^-2",
+    label_units="$W/m^2$",
     vmin=40,
     vmax=260,
     vmin_hov=40,
@@ -61,12 +63,34 @@ osr = ModelObsComparison(
     vmax_diff=80,
 )
 
-comparisons = [olr, osr]
+albedo = ModelObsComparison(
+    obs_variable_name="toa_alb_all",
+    model_variable_name="albedo",
+    label_variable_name="Albedo",
+    label_units="-",
+    vmin=0.1,
+    vmax=0.7,
+    vmin_hov=0.1,
+    vmax_hov=0.7,
+    vmin_diff=-0.4,
+    vmax_diff=0.4,
+    cmap="gnuplot",
+)
+
+comparisons = [olr, osr, albedo]
 
 
-def ds_open(file_root: str) -> xr.Dataset:
+def ds_open_albedo(file_root: str) -> xr.Dataset:
     """SHORTHAND FUNCTION FOR WRITING TO NETCDF"""
     ds = xr.open_dataset(process_dir + "/" + file_root + ".nc")
+    # Calculate albedo for EBAF
+    if "solar_mon" in ds:
+        ds["toa_alb_all_mon"] = ds["toa_sw_all_mon"] / ds["solar_mon"]
+    # Calculate albedo for model
+    elif "toa_outgoing_shortwave_flux" in ds:
+        ds["albedo"] = (
+            ds["toa_outgoing_shortwave_flux"] / ds["toa_incoming_shortwave_flux"]
+        )
     return ds
 
 
@@ -85,9 +109,13 @@ def make_ebaf_plots(
 ) -> None:
     """PLOT ABSOLUTE VALUES FOR COMPARISON TO EBAF"""
     fig, axes = plt.subplots(2, 2, figsize=(16, 8), sharex=True, sharey=True)
-    fig.suptitle(comparison.label_variable_name)
+    fig.suptitle(comparison.label_variable_name + "[" + comparison.label_units + "]")
 
-    plot_kwargs = {"vmin": comparison.vmin, "vmax": comparison.vmax, "cmap": "viridis"}
+    plot_kwargs = {
+        "vmin": comparison.vmin,
+        "vmax": comparison.vmax,
+        "cmap": comparison.cmap,
+    }
 
     ds_ebaf_month[comparison.obs_variable_name + "_mon"][0].plot.pcolormesh(
         ax=axes[0, 0], **plot_kwargs
@@ -111,8 +139,17 @@ def make_ebaf_plots(
     axes[1, 1].set_title("RAL3p2")
     axes[0, 0].set_ylim(-40, 25)
 
+    for cbar in fig.get_axes():
+        if hasattr(cbar, "collections"):
+            cbar.set_ylabel("")
+
+    for ax in axes.flatten():
+        ax.set_xlabel("longitude")
+        ax.set_ylabel("latitude")
+
     fig.tight_layout()
     plot_save(fig, comparison.obs_variable_name + "_" + setup.ebaf_str)
+    plt.close(fig)
 
 
 def make_ebaf_diff_plots(
@@ -146,12 +183,12 @@ def make_ebaf_diff_plots(
     )
 
     fig, axes = plt.subplots(2, 2, figsize=(16, 8), sharex=True, sharey=True)
-    fig.suptitle(comparison.label_variable_name)
+    fig.suptitle(comparison.label_variable_name + "[" + comparison.label_units + "]")
 
     plot_kwargs = {
         "vmin": comparison.vmin_diff,
         "vmax": comparison.vmax_diff,
-        "cmap": "bwr",
+        "cmap": comparison.cmap_diff,
     }
 
     gal_minus_ebaf.plot.pcolormesh(ax=axes[0, 0], **plot_kwargs)
@@ -168,8 +205,17 @@ def make_ebaf_diff_plots(
     axes[1, 1].set_title("RAL3p2-EBAF clim")
     axes[0, 0].set_ylim(-40, 25)
 
+    for cbar in fig.get_axes():
+        if hasattr(cbar, "collections"):
+            cbar.set_ylabel("")
+
+    for ax in axes.flatten():
+        ax.set_xlabel("longitude")
+        ax.set_ylabel("latitude")
+
     fig.tight_layout()
     plot_save(fig, comparison.obs_variable_name + "_diff_" + setup.ebaf_str)
+    plt.close(fig)
 
 
 def make_hov_plots(
@@ -178,13 +224,19 @@ def make_hov_plots(
     ds_hov_ral32: xr.Dataset,
     setup: DyamondSetup,
     comparison: ModelObsComparison,
-    ext: str = '',
+    ext: str = "",
 ) -> None:
     """PLOT HOVMOELLERS"""
     fig, axes = plt.subplots(1, 3, figsize=(12, 8), sharex=True, sharey=True)
-    fig.suptitle(comparison.label_variable_name + " Hovmoeller")
+    fig.suptitle(
+        comparison.label_variable_name + "[" + comparison.label_units + "] Hovmoeller"
+    )
 
-    plot_kwargs = {"vmin": comparison.vmin_hov, "vmax": comparison.vmax_hov, "cmap": "viridis"}
+    plot_kwargs = {
+        "vmin": comparison.vmin_hov,
+        "vmax": comparison.vmax_hov,
+        "cmap": comparison.cmap,
+    }
 
     ds_hov_syn[comparison.obs_variable_name + "_1h"].plot.pcolormesh(
         ax=axes[0], **plot_kwargs
@@ -202,26 +254,45 @@ def make_hov_plots(
     axes[1].set_title("GAL9")
     axes[2].set_title("RAL3p2")
 
+    for cbar in fig.get_axes():  # Get all axes, including colorbar axes
+        if hasattr(cbar, "collections"):  # Identify colorbar axes
+            cbar.set_ylabel("")  # Remove label
+
+    for ax in axes.flatten():
+        ax.set_xlabel("longitude")
+        ax.set_ylabel("time")
+
     fig.tight_layout()
     plot_save(fig, comparison.obs_variable_name + "_hov_" + ext + setup.start_end_str)
+    plt.close(fig)
 
 
 if __name__ == "__main__":
     Path(plots_dir).mkdir(parents=True, exist_ok=True)
     for this_setup, this_comparison in product(dyamond_setups, comparisons):
-        # OPEN RELEVANT FILES
-        this_ds_hov_syn = ds_open("syn_hov_" + this_setup.start_end_str)
-        this_ds_hov_gal9 = ds_open("GAL9_interp_hov_" + this_setup.start_end_str)
-        this_ds_hov_ral32 = ds_open("RAL3p2_interp_hov_" + this_setup.start_end_str)
-        this_ds_hov_hourly_syn = ds_open("syn_hov_hourly_mean_" + this_setup.start_end_str)
-        this_ds_hov_hourly_gal9 = ds_open("GAL9_interp_hov_hourly_mean_" + this_setup.start_end_str)
-        this_ds_hov_hourly_ral32 = ds_open("RAL3p2_interp_hov_hourly_mean_" + this_setup.start_end_str)
-        this_ds_ebaf_meanmonth = ds_open(
+        # OPEN RELEVANT FILES AND ADD ALEBDO WHERE NEEDED
+        this_ds_hov_syn = ds_open_albedo("syn_hov_" + this_setup.start_end_str)
+        this_ds_hov_gal9 = ds_open_albedo("GAL9_interp_hov_" + this_setup.start_end_str)
+        this_ds_hov_ral32 = ds_open_albedo(
+            "RAL3p2_interp_hov_" + this_setup.start_end_str
+        )
+        this_ds_hov_hourly_syn = ds_open_albedo(
+            "syn_hov_hourly_mean_" + this_setup.start_end_str
+        )
+        this_ds_hov_hourly_gal9 = ds_open_albedo(
+            "GAL9_interp_hov_hourly_mean_" + this_setup.start_end_str
+        )
+        this_ds_hov_hourly_ral32 = ds_open_albedo(
+            "RAL3p2_interp_hov_hourly_mean_" + this_setup.start_end_str
+        )
+        this_ds_ebaf_meanmonth = ds_open_albedo(
             "ebaf_meanmonth_" + this_setup.ebaf_start_pd.strftime("%m")
         )
-        this_ds_ebaf_month = ds_open("ebaf_month_" + this_setup.ebaf_str)
-        this_ds_ebaf_gal9 = ds_open("GAL9_interp_month_" + this_setup.ebaf_str)
-        this_ds_ebaf_ral32 = ds_open("RAL3p2_interp_month_" + this_setup.ebaf_str)
+        this_ds_ebaf_month = ds_open_albedo("ebaf_month_" + this_setup.ebaf_str)
+        this_ds_ebaf_gal9 = ds_open_albedo("GAL9_interp_month_" + this_setup.ebaf_str)
+        this_ds_ebaf_ral32 = ds_open_albedo(
+            "RAL3p2_interp_month_" + this_setup.ebaf_str
+        )
         # CALL PLOT COMMANDS
         make_ebaf_plots(
             this_ds_ebaf_meanmonth,
@@ -252,5 +323,5 @@ if __name__ == "__main__":
             this_ds_hov_hourly_ral32,
             this_setup,
             this_comparison,
-            ext='hourly_mean_',
+            ext="hourly_mean_",
         )

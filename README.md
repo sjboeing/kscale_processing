@@ -1,4 +1,4 @@
-# kscale processing
+# kscale processing (for UPSCALE)
 
 Initial code to evaluate UM K-Scale simulations. In particular, this includes comparison with satellite observations (CERES, will also add MIMIC). 
 

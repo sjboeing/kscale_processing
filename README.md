@@ -12,9 +12,10 @@ Files included:
 
 Requires combined observation data in right format (scripts to be added).
 
-Plans:
+Plans for developing this:
 - Needs a bit more work to optimise performance and memory usage. In particular, it may be worth moving to timestep-by-timestep processing wherever possible
-- Generalise
+- Generalise to a more general constext and add tests.
 
-Notes
+Notes:
 - The main challenge for this exercise is getting the metadata to be consistent. In particular, it is hard to exactly align grids between different variables and models, and to get consistent output times between model and observations. Sometimes, the initial or final dump are missing from the model output. To ensure the climatology is still reasonable, we first calculate a mean by hour-of-day, and then another mean over these hours to compare against e.g. CERES.
+- The code makes extensive use of python data classes.
